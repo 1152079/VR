@@ -59,12 +59,12 @@
       <a-entity cursor="rayOrigin: mouse"></a-entity>
     </a-entity>
 
-    <!-- Небо и земля -->
+    <!-- Небо и Земля -->
     <a-sky src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/sechelt.jpg"></a-sky>
     <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" src="https://i.ibb.co/Q30MB2cn/grass-1.jpg" repeat="5 5" static-body></a-plane>
     <a-light type="directional" position="2 4 3" intensity="1"></a-light>
 
-    <!-- 3D-модель с физикой (блокирует проход) --> 
+    <!-- 3D-модель с физикой (запрещает проходить через неё) -->
     <a-entity gltf-model="url(model.gltf)" position="0 0.5 -3" static-body></a-entity>
 
     <!-- Сборные объекты (розовые бублики) -->
@@ -82,13 +82,10 @@
     const player = document.getElementById("player");
     const restartButton = document.getElementById("restartButton");
 
-    // Координаты центра модели, от которой запрещено приближаться
+    // Центр модели и минимальное расстояние, на которое нельзя приблизиться
     const modelCenter = { x: 0, z: -3 };
-    const minDistanceToModel = 2; // минимальное расстояние
-
-    // Для отслеживания безопасной позиции игрока
-    let lastSafePosition = { x: 0, y: 1.6, z: 0 };
-
+    const minDistanceToModel = 2;
+    
     function restartGame() {
       score = 0;
       timeLeft = 30;
@@ -97,13 +94,10 @@
       timerText.innerText = `Время: ${timeLeft}`;
       gameOverText.style.display = "none";
       restartButton.style.display = "none";
-      // Удаляем все объекты с платформы
       while (collectibles.firstChild) {
         collectibles.removeChild(collectibles.firstChild);
       }
-      // Перезапускаем таймер
       timerInterval = setInterval(updateTimer, 1000);
-      // Запускаем спавн объектов (каждый раз с случайным интервалом)
       setInterval(spawnRandomCollectible, Math.random() * 4000 + 1000);
     }
 
@@ -129,13 +123,11 @@
     function createCollectible(x, z) {
       if (gameOver) return;
       let obj = document.createElement("a-torus");
-      // Располагаем объект немного выше пола
       obj.setAttribute("position", `${x} 0.3 ${z}`);
       obj.setAttribute("radius", "0.5");
       obj.setAttribute("radius-tubular", "0.15");
       obj.setAttribute("rotation", "90 0 0");
       obj.setAttribute("color", "pink");
-      // Физика для объекта (он тоже не должен пропадать при столкновении)\n
       obj.setAttribute("dynamic-body", "mass: 0.1");
       obj.classList.add("collectible");
       collectibles.appendChild(obj);
@@ -151,26 +143,23 @@
     }
 
     const PLATFORM_SIZE = 10;
-    // Ограничение движения: не выходить за пределы зоны и не приближаться к модели
     function constrainPlayerPosition() {
       let pos = player.getAttribute("position");
-      // Ограничиваем игровую зону
+      // Ограничиваем игровую зону (платформа 10x10)
       if (pos.x > PLATFORM_SIZE) pos.x = PLATFORM_SIZE;
       if (pos.x < -PLATFORM_SIZE) pos.x = -PLATFORM_SIZE;
       if (pos.z > PLATFORM_SIZE) pos.z = PLATFORM_SIZE;
       if (pos.z < -PLATFORM_SIZE) pos.z = -PLATFORM_SIZE;
-      
-      // Проверка расстояния до модели (по осям X и Z)
+
+      // Проверка расстояния до модели и корректировка, если игрок приближается слишком близко
       const dx = pos.x - modelCenter.x;
       const dz = pos.z - modelCenter.z;
       const distance = Math.sqrt(dx * dx + dz * dz);
-      
       if (distance < minDistanceToModel) {
-        // Если слишком близко, возвращаем на последнюю безопасную позицию
-        pos = lastSafePosition;
-      } else {
-        // Обновляем безопасную позицию
-        lastSafePosition = pos;
+        // Нормализуем вектор и устанавливаем позицию на границе недопустимой зоны
+        const factor = minDistanceToModel / distance;
+        pos.x = modelCenter.x + dx * factor;
+        pos.z = modelCenter.z + dz * factor;
       }
       player.setAttribute("position", pos);
     }
