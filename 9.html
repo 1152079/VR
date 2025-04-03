@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.rawgit.com/donmccurdy/aframe-physics-system/master/dist/aframe-physics-system.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 30px;
+            font-family: Arial, sans-serif;
+            z-index: 100;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 40px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            z-index: 100;
+            display: none;
+        }
+        #gameOver.red {
+            color: red;
+        }
+        #restartButton {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 30px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            z-index: 100;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <div id="scoreText">Очки: 0</div>
+        <div id="timerText">Время: 30</div>
+    </div>
+    <div id="gameOver"></div>
+    <button id="restartButton">Попробовать еще раз</button>
+
+    <a-scene physics>
+        <a-entity id="player" camera look-controls wasd-controls position="0 1.6 0">
+            <a-entity cursor="rayOrigin: mouse"></a-entity>
+        </a-entity>
+
+        <a-sky src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/sechelt.jpg"></a-sky>
+        <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" src="https://i.ibb.co/Q30MB2cn/grass-1.jpg" repeat="5 5" static-body></a-plane>
+        <a-light type="directional" position="2 4 3" intensity="1"></a-light>
+        <a-entity gltf-model="url(model.gltf)" position="0 0.5 -3"></a-entity>
+        <a-entity id="collectibles"></a-entity>
+    </a-scene>
+
+    <script>
+        let score = 0;
+        let timeLeft = 30;
+        let gameOver = false;
+        const collectibles = document.getElementById("collectibles");
+        const scoreText = document.getElementById("scoreText");
+        const timerText = document.getElementById("timerText");
+        const gameOverText = document.getElementById("gameOver");
+        const player = document.getElementById("player");
+        const restartButton = document.getElementById("restartButton");
+
+        function restartGame() {
+            score = 0;
+            timeLeft = 30;
+            gameOver = false;
+            scoreText.innerText = `Очки: ${score}`;
+            timerText.innerText = `Время: ${timeLeft}`;
+            gameOverText.style.display = "none";
+            restartButton.style.display = "none";
+            while (collectibles.firstChild) {
+                collectibles.removeChild(collectibles.firstChild);
+            }
+            timerInterval = setInterval(updateTimer, 1000);
+            setInterval(spawnRandomCollectible, Math.random() * 4000 + 1000);
+        }
+
+        function updateTimer() {
+            if (timeLeft > 0 && !gameOver) {
+                timeLeft--;
+                timerText.innerText = `Время: ${timeLeft}`;
+            } else {
+                clearInterval(timerInterval);
+                gameOver = true;
+                if (score === 0) {
+                    gameOverText.classList.add("red");
+                    gameOverText.innerText = "Ты даже не старался";
+                } else {
+                    gameOverText.classList.remove("red");
+                    gameOverText.innerText = `Ты что-то сделал! Очки: ${score}`;
+                }
+                gameOverText.style.display = "block";
+                restartButton.style.display = "block";
+            }
+        }
+
+        function createCollectible(x, z) {
+            if (gameOver) return;
+            let obj = document.createElement("a-torus");
+            obj.setAttribute("position", `${x} 0.3 ${z}`);
+            obj.setAttribute("radius", "0.5");
+            obj.setAttribute("radius-tubular", "0.15");
+            obj.setAttribute("rotation", "90 0 0");
+            obj.setAttribute("color", "pink");
+            obj.setAttribute("dynamic-body", "mass: 0.1");
+            // Анимация пульсации (масштабирование) без вращения:
+            obj.setAttribute("animation", "property: scale; to: 1.2 1.2 1.2; dur: 500; easing: easeInOutSine; dir: alternate; loop: true");
+            obj.classList.add("collectible");
+            collectibles.appendChild(obj);
+            obj.addEventListener("click", () => {
+                if (!gameOver) {
+                    score += 10;
+                    scoreText.innerText = `Очки: ${score}`;
+                    new Audio("https://cdn.aframe.io/360-image-gallery-boilerplate/audio/click.ogg").play();
+                }
+                obj.remove();
+            });
+            setTimeout(() => obj.remove(), 1000);
+        }
+
+        const PLATFORM_SIZE = 10;
+        function constrainPlayerPosition() {
+            let position = player.getAttribute("position");
+            if (position.x > PLATFORM_SIZE) position.x = PLATFORM_SIZE;
+            if (position.x < -PLATFORM_SIZE) position.x = -PLATFORM_SIZE;
+            if (position.z > PLATFORM_SIZE) position.z = PLATFORM_SIZE;
+            if (position.z < -PLATFORM_SIZE) position.z = -PLATFORM_SIZE;
+            player.setAttribute("position", position);
+        }
+        setInterval(constrainPlayerPosition, 16);
+
+        function spawnRandomCollectible() {
+            const x = Math.random() * 8 - 4;
+            const z = Math.random() * 8 - 4;
+            createCollectible(x, z);
+        }
+
+        restartButton.addEventListener("click", restartGame);
+        restartGame();
+    </script>
+</body>
+</html>

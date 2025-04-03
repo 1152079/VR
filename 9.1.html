@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>AR с переключением камер и GPS</title>
+    <!-- Подключаем A-Frame -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <!-- Подключаем AR.js для A-Frame -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+      body {
+        background-color: #000;
+        margin: 0;
+        overflow: hidden;
+      }
+      /* Кнопка переключения камер */
+      #switchCameraButton {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 999;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      /* Информация о GPS */
+      #gpsInfo {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        z-index: 999;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        border-radius: 5px;
+      }
+      video,
+        canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Кнопка для переключения камер -->
+    <button id="switchCameraButton" onclick="switchCamera()">Переключить камеру</button>
+    <!-- Блок для отображения GPS-координат -->
+    <div id="gpsInfo">GPS: ожидается...</div>
+
+    <!-- AR-сцена с AR.js -->
+    <a-scene embedded arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
+      <!-- Пример использования gps-entity-place для размещения объекта в AR-сцене.
+           В реальном проекте координаты нужно задавать в зависимости от цели. -->
+      <a-entity gps-entity-place="latitude: 0; longitude: 0">
+        <a-box color="red" depth="1" height="1" width="1"></a-box>
+      </a-entity>
+      <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+      // Глобальная переменная для хранения текущего режима камеры
+      let currentFacingMode = 'environment'; // 'environment' – задняя, 'user' – фронтальная
+
+      // Функция для переключения камеры
+      function switchCamera() {
+        // Переключаем режим
+        currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+        
+        // Если ARToolkitSource уже инициализирован, останавливаем текущий поток
+        if (window.arToolkitSource && window.arToolkitSource.domElement &&
+            window.arToolkitSource.domElement.srcObject) {
+          window.arToolkitSource.domElement.srcObject.getTracks().forEach(track => track.stop());
+        }
+        
+        // Создаём новый экземпляр ARToolkitSource с требуемым facingMode
+        window.arToolkitSource = new THREEx.ArToolkitSource({
+          sourceType: 'webcam',
+          facingMode: currentFacingMode
+        });
+        window.arToolkitSource.init(function onReady(){
+          console.log('Камера переключена на: ' + currentFacingMode);
+          // При необходимости можно обновить поток в сцене
+        });
+      }
+
+      // Запрос доступа к камере (вызовет стандартное диалоговое окно браузера)
+      function requestCameraAccess() {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } })
+          .then(stream => {
+            // Если доступ получен – сразу освобождаем поток (AR.js сам запустит нужный поток)
+            stream.getTracks().forEach(track => track.stop());
+            console.log('Доступ к камере разрешён.');
+          })
+          .catch(err => {
+            console.error('Ошибка доступа к камере:', err);
+          });
+      }
+
+      // Инициализация геолокации и обновление информации на экране
+      function initGeolocation() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            position => {
+              const lat = position.coords.latitude;
+              const lon = position.coords.longitude;
+              document.getElementById('gpsInfo').innerHTML = 'GPS: ' + lat.toFixed(5) + ', ' + lon.toFixed(5);
+              // При необходимости можно обновить атрибуты gps-entity-place,
+              // чтобы привязать объекты к реальным координатам.
+            },
+            error => {
+              document.getElementById('gpsInfo').innerHTML = 'GPS ошибка: ' + error.message;
+            }
+          );
+        } else {
+          document.getElementById('gpsInfo').innerHTML = 'Геолокация не поддерживается.';
+        }
+      }
+
+      // При загрузке страницы запрашиваем разрешения
+      window.addEventListener('load', function() {
+        requestCameraAccess();
+        initGeolocation();
+      });
+    </script>
+  </body>
+</html>
