@@ -61,7 +61,13 @@
         <a-sky src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/sechelt.jpg"></a-sky>
         <a-plane position="0 0 0" rotation="-90 0 0" width="20" height="20" src="https://i.ibb.co/Q30MB2cn/grass-1.jpg" repeat="5 5" static-body></a-plane>
         <a-light type="directional" position="2 4 3" intensity="1"></a-light>
-        <a-entity gltf-model="url(model.gltf)" static-body="shape: hull" position="0 0.5 -3"></a-entity>
+        
+        
+        <a-entity position="0 0.5 -3">
+            <a-entity gltf-model="url(model.gltf)"></a-entity>
+            <a-box width="1" height="1" depth="1" static-body visible="false"></a-box>
+        </a-entity>                
+        
         <a-entity id="collectibles"></a-entity>
     </a-scene>
 
